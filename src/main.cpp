@@ -6,10 +6,17 @@
 #include <FreqMeasureMulti.h>
 enum ACUSTATE {BOOTUP, RUNNING, FAULT};
 int acuState=0;
+
+//Neopixel shit
+#include <Adafruit_NeoPixel.h>
+int LEDPIN = 8;
+int NUMPIXELS = 4;
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
+
 #define runningFoReal
 #ifdef runningFoReal
-#define NUMBER_OF_LTCs 5
-#define NUMBER_OF_CELLS 60
+#define NUMBER_OF_LTCs 5 // TODO change to 6?
+#define NUMBER_OF_CELLS 60 // TODO change to 72?
 uint8_t gettingTempState=0; //0=set 1=wait 2=get
 //Init ADCs
 Ltc2499 theThings[6];
@@ -21,12 +28,14 @@ byte ADCChannels[]={CHAN_SINGLE_0P,CHAN_SINGLE_1P,CHAN_SINGLE_2P,CHAN_SINGLE_3P,
                     CHAN_SINGLE_8P,CHAN_SINGLE_9P,CHAN_SINGLE_10P,CHAN_SINGLE_11P};
 elapsedMillis conversionTime;//wait 80ms for conversion to be ready
 #endif
+
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can0;
 int8_t batteryTemps[NUMBER_OF_CELLS];
 FreqMeasureMulti imdPWM; float sum1=0;int count1=0;
 FreqMeasureMulti imdPWM2; float sum2=0;int count2=0;
 int currentChannel=0;
 int globalHighTherm=25, globalLowTherm=25;
+
 //Can IDs
 #define BMS_ID 0x7E3
 #define ThermistorToBMS_ID 0x9839F380 
@@ -68,10 +77,21 @@ void setup() {
     Serial.println(batteryTemps[i]);
   }
   pinMode(9, OUTPUT); digitalWrite(9, HIGH); //Relay pin
-  // pinMode(LED_BUILTIN,OUTPUT);
-  for(int i=0;i<4;i++){
-    pinMode(i, OUTPUT); digitalWrite(i, LOW); //indicator LEDs
-  }
+
+  // TODO, we are now using neo pixels?
+  // // pinMode(LED_BUILTIN,OUTPUT);
+  // for(int i=0;i<4;i++){
+  //   pinMode(i, OUTPUT); digitalWrite(i, LOW); //indicator LEDs 
+  // }
+  
+
+  // Neopixel lightup for initial testing
+  pixels.begin(); // This initializes the NeoPixel library.
+  pixels.setBrightness(255);
+  pixels.setPixelColor(0, pixels.Color(255,255,255)); // white at 100% brightness
+  pixels.show(); // This sends the updated pixel color to the hardware
+
+
   // #ifdef runningFoReal
    for(int i=0;i<NUMBER_OF_LTCs;i++){
     byte ltcStatus=theThings[i].begin(ltcAddressList[i],5000);
@@ -143,6 +163,10 @@ void loop() {
     digitalWrite(9,HIGH);
     controlFanSpeed();
   }
+
+  chase(pixels.Color(255, 0, 0)); // Red
+  chase(pixels.Color(0, 255, 0)); // Green
+  chase(pixels.Color(0, 0, 255)); // Blue
 }
 void canSniff(const CAN_message_t &msg) {
   //if(msg.id==BMS_Response_ID){
@@ -200,12 +224,15 @@ void sendTempData(){
     // Serial.printf("Iter: %d Highest: %d Lowest: %d\n",i,highTherm,lowTherm);
     // #endif
   }
+
+  // TODO fix bodge
   if(highTherm>80){
     highTherm=25;
   }
   if(lowTherm<-40){
     lowTherm=(highTherm-2);
   }
+
   Serial.printf("Highest: %d Lowest: %d\n",highTherm,lowTherm);
   int avgTherm=(lowTherm+highTherm)/2;//yep
   int checksum=moduleNo+lowTherm+highTherm+avgTherm+enabledTherm+highestThermId+lowestThermId+57+8;//0x39 and 0x08 added to checksum per orion protocol
@@ -344,7 +371,7 @@ void ACUStateMachine(){
         }
       break;
     case 2:
-      Serial.println("reading channels");
+      Serial.println("Reading channels");
       getTemps(currentChannel);
       acuState=0;
       currentChannel++;
@@ -396,3 +423,12 @@ void ACUStateMachine(){
       Can0.write(ctrlMsg);
     }
   }
+
+  static void chase(uint32_t c) {
+  for(uint16_t i=0; i<pixels.numPixels()+4; i++) {
+      pixels.setPixelColor(i  , c); // Draw new pixel
+      pixels.setPixelColor(i-4, 0); // Erase pixel a few steps back
+      pixels.show();
+      delay(25);
+  }
+}
