@@ -7,11 +7,11 @@
 enum ACUSTATE {BOOTUP, RUNNING, FAULT};
 int acuState=0;
 
-//Neopixel shit
-#include <Adafruit_NeoPixel.h>
-int LEDPIN = 8;
-int NUMPIXELS = 4;
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
+// Neopixel shit
+// #include <Adafruit_NeoPixel.h>
+// int LEDPIN = 8;
+// int NUMPIXELS = 4;
+// Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, LEDPIN, NEO_GRB + NEO_KHZ800);
 
 #define runningFoReal
 #ifdef runningFoReal
@@ -85,11 +85,14 @@ void setup() {
   // }
   
 
-  // Neopixel lightup for initial testing
-  pixels.begin(); // This initializes the NeoPixel library.
-  pixels.setBrightness(255);
-  pixels.setPixelColor(0, pixels.Color(255,255,255)); // white at 100% brightness
-  pixels.show(); // This sends the updated pixel color to the hardware
+  // // TODO Neopixel lightup for initial testing
+  // pixels.begin(); // This initializes the NeoPixel library.
+  // pixels.setBrightness(255); // Need to do for each
+  // pixels.setPixelColor(0, pixels.Color(255,255,255)); // white at 100% brightness
+  // pixels.setPixelColor(1, pixels.Color(255,255,255)); // white at 100% brightness
+  // pixels.setPixelColor(2, pixels.Color(255,255,255)); // white at 100% brightness
+  // pixels.setPixelColor(3, pixels.Color(255,255,255)); // white at 100% brightness
+  // pixels.show(); // This sends the updated pixel color to the hardware
 
 
   // #ifdef runningFoReal
@@ -121,8 +124,8 @@ void setup() {
   // while(!Serial.available());{ }
   imdPWM.begin(8,FREQMEASUREMULTI_MARK_ONLY);
 }
-#ifdef runningFoReal
 
+#ifdef runningFoReal
 void getAllTheTemps(int channelNo){
   for(int i=0;i<NUMBER_OF_LTCs;i++){
     theThings[i].changeChannel(CHAN_SINGLE_0P);
@@ -143,6 +146,7 @@ void getAllTheTemps(int channelNo){
   // Serial.println("=================");
 }
 #endif
+
 void loop() {
   getImdPwm();
   digitalWrite(LED_BUILTIN,LOW);
@@ -163,11 +167,8 @@ void loop() {
     digitalWrite(9,HIGH);
     controlFanSpeed();
   }
-
-  chase(pixels.Color(255, 0, 0)); // Red
-  chase(pixels.Color(0, 255, 0)); // Green
-  chase(pixels.Color(0, 0, 255)); // Blue
 }
+
 void canSniff(const CAN_message_t &msg) {
   //if(msg.id==BMS_Response_ID){
   // digitalWrite(LED_BUILTIN,HIGH);
@@ -183,6 +184,7 @@ void canSniff(const CAN_message_t &msg) {
   // } Serial.println();
   //}
 }
+
 //getting one of the max temps from BMS (high or low not sure lol)
 void getTempData()
 {
@@ -197,6 +199,7 @@ void getTempData()
     Can0.write(getTempMsg);
     Serial.println("Requesting Highest Temp Data...");
 }
+
 //Sending highest/lowest temperature to the BMS
 void sendTempData(){
   CAN_message_t sendTempMsg;
@@ -250,6 +253,7 @@ int setChannels(int channelNo){
     return channelNo;
   }
 } 
+
 void setChannelsSwitchCase(int channelNo){
   switch(channelNo){
     case 0:{
@@ -329,6 +333,7 @@ void setChannelsSwitchCase(int channelNo){
       break;
   }
 } 
+
 void getTemps(int channelNo){
   CAN_message_t energus_voltages;
   energus_voltages.id = 0x6B3;
@@ -352,83 +357,78 @@ void getTemps(int channelNo){
   }
   Can0.write(energus_voltages);
 }
-void ACUStateMachine(){
-  // Serial.println("State:");
-  // Serial.println(acuState);
-  switch(acuState){
-    case 0:
-    {
-      setChannelsSwitchCase(currentChannel);
-      conversionTime=0;
-      acuState=1;
-      Serial.println("Setting Channels: ");
-      break;
-    }
-    case 1:
-      if(conversionTime>=100){
-        acuState=2;
-        Serial.println("Going to get readings");
-        }
-      break;
-    case 2:
-      Serial.println("Reading channels");
-      getTemps(currentChannel);
-      acuState=0;
-      currentChannel++;
-      if(currentChannel>11){
-        currentChannel=0;
-      }
-      break;
-    }
-  }
-  void DebuggingPrintout(){
-    for(int i=0;i<NUMBER_OF_CELLS;i++){
-      Serial.print("Cell Number: "); Serial.print(i+1); Serial.print(" Temp: "); Serial.print(batteryTemps[i]);
-      Serial.println();
-    }
-  }
-  void getImdPwm(){
-    float imdasdf=imdPWM.read();
-    if (imdPWM.available()) {
-    sum1 = sum1 + imdPWM.read();
-    count1++;
-    }
-    if(IMDPwmPrintTimer.check()){
-        if (count1 > 0) {
-          float imdPWMfrequency=(imdPWM.countToFrequency(sum1 /count1)/2);
-        Serial.print("FREQUENCY: ");Serial.println(imdPWM.countToFrequency(sum1 /count1)/2);
-        float period=1/imdPWMfrequency; 
-        Serial.print("PW: ");Serial.println((imdPWM.countToNanoseconds(sum1/count1)/1000000.0)/(period*10));
-      } else {
-        Serial.print("(no pulses)");
-      }
-      
-      sum1=0;count1=0;
-    }
-  }
-  void controlFanSpeed(){
-    if(fanSpeedMsgTimer.check()){
-    uint8_t fanSpeed=64;
-    if(globalHighTherm>=25){
- //       fanSpeed=map(globalHighTherm,25,30,128,255);
-        fanSpeed=255;
-    }
-    Serial.print("Fan Speed: ");
-    Serial.println(fanSpeed);
-    CAN_message_t ctrlMsg;
-      ctrlMsg.len=8;
-      ctrlMsg.id=0xC7;
-      uint8_t fanSpeedMsg[]={fanSpeed,0,0,0,1,1,0,0};
-      memcpy(ctrlMsg.buf, fanSpeedMsg, sizeof(ctrlMsg.buf));
-      Can0.write(ctrlMsg);
-    }
-  }
 
-  static void chase(uint32_t c) {
-  for(uint16_t i=0; i<pixels.numPixels()+4; i++) {
-      pixels.setPixelColor(i  , c); // Draw new pixel
-      pixels.setPixelColor(i-4, 0); // Erase pixel a few steps back
-      pixels.show();
-      delay(25);
+void ACUStateMachine(){
+// Serial.println("State:");
+// Serial.println(acuState);
+switch(acuState){
+  case 0:
+  {
+    setChannelsSwitchCase(currentChannel);
+    conversionTime=0;
+    acuState=1;
+    Serial.println("Setting Channels: ");
+    break;
+  }
+  case 1:
+    if(conversionTime>=100){
+      acuState=2;
+      Serial.println("Going to get readings");
+      }
+    break;
+  case 2:
+    Serial.println("Reading channels");
+    getTemps(currentChannel);
+    acuState=0;
+    currentChannel++;
+    if(currentChannel>11){
+      currentChannel=0;
+    }
+    break;
+  }
+}
+
+void DebuggingPrintout(){
+  for(int i=0;i<NUMBER_OF_CELLS;i++){
+    Serial.print("Cell Number: "); Serial.print(i+1); Serial.print(" Temp: "); Serial.print(batteryTemps[i]);
+    Serial.println();
+  }
+}
+
+void getImdPwm(){
+  float imdasdf=imdPWM.read();
+  if (imdPWM.available()) {
+  sum1 = sum1 + imdPWM.read();
+  count1++;
+  }
+  if(IMDPwmPrintTimer.check()){
+      if (count1 > 0) {
+        float imdPWMfrequency=(imdPWM.countToFrequency(sum1 /count1)/2);
+      Serial.print("FREQUENCY: ");Serial.println(imdPWM.countToFrequency(sum1 /count1)/2);
+      float period=1/imdPWMfrequency; 
+      Serial.print("PW: ");Serial.println((imdPWM.countToNanoseconds(sum1/count1)/1000000.0)/(period*10));
+    } else {
+      Serial.print("(no pulses)");
+    }
+    
+    sum1=0;count1=0;
+  }
+}
+
+void controlFanSpeed(){
+  if(fanSpeedMsgTimer.check()){
+  uint8_t fanSpeed=64;
+  if(globalHighTherm>=25){
+//       fanSpeed=map(globalHighTherm,25,30,128,255);
+      fanSpeed=255;
+  }
+  Serial.print("Fan Speed: ");
+  Serial.println(fanSpeed);
+  CAN_message_t ctrlMsg;
+    ctrlMsg.len=8;
+    ctrlMsg.id=0xC7;
+    uint8_t fanSpeedMsg[]={fanSpeed,0,0,0,1,1,0,0};
+    memcpy(ctrlMsg.buf, fanSpeedMsg, sizeof(ctrlMsg.buf));
+    Can0.write(ctrlMsg);
   }
 }
