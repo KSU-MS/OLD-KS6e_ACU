@@ -1,7 +1,6 @@
-# KS5e Accumulator Control Unit Firmware
-# Main running branch for comp
+KS6e_ACU
+KS6e ACU firmware Testing branch
 
-The accumulator control unit is a board in the KS5e's battery pack which controls:
-* The battery pack's 10 fans
-* The temperature monitoring by interfacing with 5 distributed temperature monitoring boards over i2c
-* CANBUS communications with the Orion BMS for data acquisition and vehicle safety
+3 states: 0 = setting channels and moving to state 1 1 = waiting to check readings, if past 100ms, set to state 2 to get readings 2 = getTemps and set state back to 0, and cycle through channels 0-11
+
+Functionality: -Recieve HI/LOW temp data from BMS -Send HI/LOW temp data from MBD to BMS, only reporting the highest/lowest values -cycle between channels to switch between modules -switch between states -get temps from MDBs -monitor IMD PWM -print debugging -control fans
