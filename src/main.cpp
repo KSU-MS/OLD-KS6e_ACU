@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <FlexCAN_T4.h>
 #include <Metro.h>
-#include <WireIMXRT.h>
-#include <FreqMeasureMulti.h>
 #include <MDB_labels.h>
 
 #define DEBUG true
@@ -11,7 +9,6 @@
 #define NUMBER_OF_CELLS 72
 #define NUMBER_OF_MODULES 6
 #define CELLS_PER_MODULE 12
-
 #define CELLS_1A CELLS_PER_MODULE*0/2
 #define CELLS_1B CELLS_PER_MODULE*1/2
 #define CELLS_2A CELLS_PER_MODULE*2/2
@@ -52,7 +49,6 @@ Metro heartBeat = Metro(100);
 
 // Globals
 int globalHighTherm = 25, globalLowTherm = 25;
-int heartBeatState = 0;
 
 // Function defs
 int ReadACC_1(CAN_message_t &msg);
@@ -105,20 +101,16 @@ void setup()
 // Main loop -----------------------------------------------------------------------
 void loop()
 {
-  if(heartBeat.check())
-  {
-    heartBeatState=!heartBeatState;
-    digitalWrite(LED_BUILTIN, heartBeatState);
+  if(heartBeat.check()){
+    digitalToggle(LED_BUILTIN);
   }
   
   CAN_1.events();
   
-  if (doThingsRate.check())
-  {
+  if (doThingsRate.check()) {
     updateAccumulatorCAN();
   }
-  if (sendTempRate.check() == 1)
-  {
+  if (sendTempRate.check() == 1){
     sendTempData();
   }
 }
