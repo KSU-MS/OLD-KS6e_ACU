@@ -93,7 +93,7 @@ void setChannelsSwitchCase(int channelNo);
 void getTemps(int channelNo);
 void DebuggingPrintout();
 
-int ReadBatteryTemps();
+int ReadBatteryTemps(CAN_message_t &msg);
 void updateAccumulatorCAN();
 void init_ACU_CAN();
 
@@ -130,7 +130,7 @@ void setup()
   init_ACU_CAN();
 }
 
-// Main loop
+// Main loop -----------------------------------------------------------------------
 void loop()
 {
   if(heartbeat.check())
@@ -149,10 +149,11 @@ void loop()
   {
     sendTempData();
     #if DEBUG
-    DebuggingPrintout();
+    // DebuggingPrintout();
     #endif
   }
 }
+// Main loop -----------------------------------------------------------------------
 
 void init_ACU_CAN()
 {
@@ -179,10 +180,22 @@ void updateAccumulatorCAN()
 {  
   if (ReadBatteryTemps(rxMsg))
   {
+    // Serial.print("MB "); Serial.print(rxMsg.mb);
+    // Serial.print("  OVERRUN: "); Serial.print(rxMsg.flags.overrun);
+    // Serial.print("  LEN: "); Serial.print(rxMsg.len);
+    // Serial.print(" EXT: "); Serial.print(rxMsg.flags.extended);
+    // Serial.print(" TS: "); Serial.print(rxMsg.timestamp);
+    // Serial.print(" ID: "); Serial.print(rxMsg.id, HEX);
+    // Serial.print(" Buffer: ");
+    // for ( uint8_t i = 0; i < rxMsg.len; i++ ) {
+    //   Serial.print(rxMsg.buf[i], HEX); Serial.print(" ");
+    // } 
+    // Serial.println();
     switch (rxMsg.id)  // This is cancer and could better be implemented with a loop I imagine
     {
     case (MODULE_1_A): 
     {
+      // Serial.println("Module 1 A");
       for (int i = CELLS_1A; i>=CELLS_1A&&i < CELLS_1B; i++){ // Would be good to not hard code this
         batteryTemps[i]=rxMsg.buf[i-CELLS_1A];
       }
@@ -261,7 +274,7 @@ void sendTempData()
       highestThermId = i;
     }
     #ifdef DEBUG
-    Serial.printf("Iter: %d Highest: %d Lowest: %d\n",i,highTherm,lowTherm);
+    // Serial.printf("Iter: %d Highest: %d Lowest: %d\n",i,highTherm,lowTherm);
     #endif
   }
 
