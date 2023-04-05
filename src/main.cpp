@@ -124,6 +124,7 @@ void loop()
 }
 // Main loop -----------------------------------------------------------------------
 
+// Updates battery temp array with the values from the isolated ACC canbus via a switch case
 void updateAccumulatorCAN()
 {  
   if (ReadACC_1(rxMsg))
