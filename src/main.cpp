@@ -16,22 +16,22 @@ int acuState = 0;
 #define DEBUG true
 
 // BIG DEFINES FOR MODULES (absolute cancer code)
-#define NUMBER_OF_CELLS 60
+#define NUMBER_OF_CELLS 72
 #define NUMBER_OF_MODULES 6
 #define CELLS_PER_MODULE (NUMBER_OF_CELLS/NUMBER_OF_MODULES)
 
-#define CELLS_1A NUMBER_OF_CELLS/CELLS_PER_MODULE*0
-#define CELLS_1B NUMBER_OF_CELLS/CELLS_PER_MODULE*1
-#define CELLS_2A NUMBER_OF_CELLS/CELLS_PER_MODULE*2
-#define CELLS_2B NUMBER_OF_CELLS/CELLS_PER_MODULE*3
-#define CELLS_3A NUMBER_OF_CELLS/CELLS_PER_MODULE*4
-#define CELLS_3B NUMBER_OF_CELLS/CELLS_PER_MODULE*5
-#define CELLS_4A NUMBER_OF_CELLS/CELLS_PER_MODULE*6
-#define CELLS_4B NUMBER_OF_CELLS/CELLS_PER_MODULE*7
-#define CELLS_5A NUMBER_OF_CELLS/CELLS_PER_MODULE*8
-#define CELLS_5B NUMBER_OF_CELLS/CELLS_PER_MODULE*9
-#define CELLS_6A NUMBER_OF_CELLS/CELLS_PER_MODULE*10
-#define CELLS_6B NUMBER_OF_CELLS/CELLS_PER_MODULE*11
+#define CELLS_1A CELLS_PER_MODULE*0/2
+#define CELLS_1B CELLS_PER_MODULE*1/2
+#define CELLS_2A CELLS_PER_MODULE*2/2
+#define CELLS_2B CELLS_PER_MODULE*3/2
+#define CELLS_3A CELLS_PER_MODULE*4/2
+#define CELLS_3B CELLS_PER_MODULE*5/2
+#define CELLS_4A CELLS_PER_MODULE*6/2
+#define CELLS_4B CELLS_PER_MODULE*7/2
+#define CELLS_5A CELLS_PER_MODULE*8/2
+#define CELLS_5B CELLS_PER_MODULE*9/2
+#define CELLS_6A CELLS_PER_MODULE*10/2
+#define CELLS_6B CELLS_PER_MODULE*11/2
 
 int8_t batteryTemps[NUMBER_OF_CELLS];
 
@@ -180,32 +180,29 @@ void updateAccumulatorCAN()
 {  
   if (ReadBatteryTemps(rxMsg))
   {
-    // Serial.print("MB "); Serial.print(rxMsg.mb);
-    // Serial.print("  OVERRUN: "); Serial.print(rxMsg.flags.overrun);
-    // Serial.print("  LEN: "); Serial.print(rxMsg.len);
-    // Serial.print(" EXT: "); Serial.print(rxMsg.flags.extended);
-    // Serial.print(" TS: "); Serial.print(rxMsg.timestamp);
-    // Serial.print(" ID: "); Serial.print(rxMsg.id, HEX);
-    // Serial.print(" Buffer: ");
-    // for ( uint8_t i = 0; i < rxMsg.len; i++ ) {
-    //   Serial.print(rxMsg.buf[i], HEX); Serial.print(" ");
-    // } 
-    // Serial.println();
+    Serial.print("MB "); Serial.print(rxMsg.mb);
+    Serial.print("  OVERRUN: "); Serial.print(rxMsg.flags.overrun);
+    Serial.print("  LEN: "); Serial.print(rxMsg.len);
+    Serial.print(" EXT: "); Serial.print(rxMsg.flags.extended);
+    Serial.print(" TS: "); Serial.print(rxMsg.timestamp);
+    Serial.print(" ID: "); Serial.print(rxMsg.id, HEX);
+    Serial.print(" Buffer: ");
+    for ( uint8_t i = 0; i < rxMsg.len; i++ ) {
+      Serial.print(rxMsg.buf[i], HEX); Serial.print(" ");
+    } 
+    Serial.println();
     switch (rxMsg.id)  // This is cancer and could better be implemented with a loop I imagine
     {
     case (MODULE_1_A): 
     {
-      // Serial.println("Module 1 A");
-      for (int i = CELLS_1A; i>=CELLS_1A&&i < CELLS_1B; i++){ // Would be good to not hard code this
-        batteryTemps[i]=rxMsg.buf[i-CELLS_1A];
-      }
+      Serial.println("Module 1 A");
+      memcpy(batteryTemps+CELLS_1A,rxMsg.buf,6);
       break;
     }
     case (MODULE_1_B): 
     {
-      for (int i = CELLS_1B; i>=CELLS_1B&&i < CELLS_2A; i++){ 
-        batteryTemps[i]=rxMsg.buf[i-CELLS_1B];
-      }
+      Serial.println("Module 1 B");
+      memcpy(batteryTemps+CELLS_1B,rxMsg.buf,6);
       break;
     }
     default:
