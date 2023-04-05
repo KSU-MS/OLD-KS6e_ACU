@@ -40,13 +40,13 @@ int8_t batteryTemps[NUMBER_OF_CELLS];
 
 uint8_t gettingTempState = 0; // 0=set 1=wait 2=get
 // Init ADCs
-Ltc2499 theThings[6];
+// Ltc2499 theThings[6];
 float batteryTempvoltages[NUMBER_OF_CELLS];
-uint8_t ltcAddressList[] = {ADDR_Z00, ADDR_Z0Z, ADDR_0Z0, // one two three
-                            ADDR_ZZ0, ADDR_0ZZ};          // first 6 configurable addresses in the mf datasheet
-byte ADCChannels[] = {CHAN_SINGLE_0P, CHAN_SINGLE_1P, CHAN_SINGLE_2P, CHAN_SINGLE_3P,
-                      CHAN_SINGLE_4P, CHAN_SINGLE_5P, CHAN_SINGLE_6P, CHAN_SINGLE_7P,
-                      CHAN_SINGLE_8P, CHAN_SINGLE_9P, CHAN_SINGLE_10P, CHAN_SINGLE_11P};
+// uint8_t ltcAddressList[] = {ADDR_Z00, ADDR_Z0Z, ADDR_0Z0, // one two three
+//                             ADDR_ZZ0, ADDR_0ZZ};          // first 6 configurable addresses in the mf datasheet
+// byte ADCChannels[] = {CHAN_SINGLE_0P, CHAN_SINGLE_1P, CHAN_SINGLE_2P, CHAN_SINGLE_3P,
+//                       CHAN_SINGLE_4P, CHAN_SINGLE_5P, CHAN_SINGLE_6P, CHAN_SINGLE_7P,
+//                       CHAN_SINGLE_8P, CHAN_SINGLE_9P, CHAN_SINGLE_10P, CHAN_SINGLE_11P};
 elapsedMillis conversionTime; // wait 80ms for conversion to be ready
 #endif
 
@@ -93,6 +93,10 @@ void setChannelsSwitchCase(int channelNo);
 void getTemps(int channelNo);
 void DebuggingPrintout();
 
+int ReadBatteryTemps();
+void updateAccumulatorCAN();
+void init_ACU_CAN();
+
 void setup()
 {
   Wire.setClock(100000);
@@ -110,25 +114,6 @@ void setup()
     batteryTemps[i] = 0; // init default temps as a safe value
     Serial.println(batteryTemps[i]);
   }
-
-  // #ifdef runningFoReal
-  for (int i = 0; i < NUMBER_OF_LTCs; i++)
-  {
-    byte ltcStatus = theThings[i].begin(ltcAddressList[i], 5000);
-    if (ltcStatus)
-    {
-      Serial.print(ltcAddressList[i]);
-      Serial.printf(", Error with LTC # %d", i);
-      Serial.println();
-      // while(1){};
-    }
-    else
-    {
-      Serial.printf("initialized LTC #%d with address %x\n", i, ltcAddressList[i]);
-    }
-    delay(100);
-  }
-  // #endif
 
   CAN_1.begin();
   CAN_1.setBaudRate(500000);
@@ -153,10 +138,12 @@ void loop()
     HBstate=!HBstate;
     digitalWrite(LED_BUILTIN, HBstate);
   }
+  
   CAN_1.events();
+  
   if (doThingsRate.check())
   {
-    ACUStateMachine();
+    updateAccumulatorCAN();
   }
   if (sendTempRate.check() == 1)
   {
@@ -288,210 +275,210 @@ void sendTempData()
   globalLowTherm = lowTherm;
 }
 
-int setChannels(int channelNo)
-{
-  for (int i = 0; i < NUMBER_OF_LTCs; i++)
-  {
-    theThings[i].changeChannel(ADCChannels[channelNo]);
-    return channelNo;
-  }
-}
+// int setChannels(int channelNo)
+// {
+//   for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//   {
+//     theThings[i].changeChannel(ADCChannels[channelNo]);
+//     return channelNo;
+//   }
+// }
 
-void setChannelsSwitchCase(int channelNo)
-{
-  switch (channelNo)
-  {
-  case 0:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_0P);
-    }
-  }
-  break;
-  case 1:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_1P);
-      break;
-    }
-  }
-  break;
-  case 2:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_2P);
-      break;
-    }
-  }
-  break;
-  case 3:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_3P);
-    }
-  }
-  break;
-  case 4:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_4P);
-    }
-  }
-  break;
-  case 5:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_5P);
-    }
-  }
-  break;
-  case 6:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_6P);
-      break;
-    }
-  }
-  break;
-  case 7:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_7P);
-    }
-  }
-  break;
-  case 8:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_8P);
-    }
-  }
-  break;
-  case 9:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_9P);
-    }
-  }
-  break;
-  case 10:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_10P);
-    }
-  }
-  break;
-  case 11:
-  {
-    for (int i = 0; i < NUMBER_OF_LTCs; i++)
-    {
-      theThings[i].changeChannel(CHAN_SINGLE_11P);
-    }
-  }
-  break;
-  }
-}
+// void setChannelsSwitchCase(int channelNo)
+// {
+//   switch (channelNo)
+//   {
+//   case 0:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_0P);
+//     }
+//   }
+//   break;
+//   case 1:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_1P);
+//       break;
+//     }
+//   }
+//   break;
+//   case 2:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_2P);
+//       break;
+//     }
+//   }
+//   break;
+//   case 3:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_3P);
+//     }
+//   }
+//   break;
+//   case 4:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_4P);
+//     }
+//   }
+//   break;
+//   case 5:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_5P);
+//     }
+//   }
+//   break;
+//   case 6:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_6P);
+//       break;
+//     }
+//   }
+//   break;
+//   case 7:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_7P);
+//     }
+//   }
+//   break;
+//   case 8:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_8P);
+//     }
+//   }
+//   break;
+//   case 9:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_9P);
+//     }
+//   }
+//   break;
+//   case 10:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_10P);
+//     }
+//   }
+//   break;
+//   case 11:
+//   {
+//     for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//     {
+//       theThings[i].changeChannel(CHAN_SINGLE_11P);
+//     }
+//   }
+//   break;
+//   }
+// }
 
-void getTemps(int channelNo)
-{
-  CAN_message_t energus_voltages;
-  energus_voltages.id = 0x6B3;
-  energus_voltages.buf[0] = channelNo;
-  energus_voltages.len = 8;
-  for (int i = 0; i < NUMBER_OF_LTCs; i++)
-  {
+// void getTemps(int channelNo)
+// {
+//   CAN_message_t energus_voltages;
+//   energus_voltages.id = 0x6B3;
+//   energus_voltages.buf[0] = channelNo;
+//   energus_voltages.len = 8;
+//   for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//   {
 
-    float v = theThings[i].readVoltage();
-    int cellNum = (i * 12) + channelNo;
-    batteryTempvoltages[cellNum] = v;
-    float vv = v * 100;
-    energus_voltages.buf[i + 1] = (int)vv;
-    Serial.printf("Can Message Test: %d\n", energus_voltages.buf[i + 1]);
-    float temp = (v * -79.256) + 168.4;
-    batteryTemps[cellNum] = temp;
-#ifdef DEBUG
-    char buffer[100];
-    sprintf(buffer, "LTC Number: %d CellNum: %d Channel: %d Reading: %f TempC: %f ", i, cellNum, channelNo, v, temp);
-    Serial.println(buffer);
-#endif
-  }
-  CAN_1.write(energus_voltages);
-}
+//     float v = theThings[i].readVoltage();
+//     int cellNum = (i * 12) + channelNo;
+//     batteryTempvoltages[cellNum] = v;
+//     float vv = v * 100;
+//     energus_voltages.buf[i + 1] = (int)vv;
+//     Serial.printf("Can Message Test: %d\n", energus_voltages.buf[i + 1]);
+//     float temp = (v * -79.256) + 168.4;
+//     batteryTemps[cellNum] = temp;
+// #ifdef DEBUG
+//     char buffer[100];
+//     sprintf(buffer, "LTC Number: %d CellNum: %d Channel: %d Reading: %f TempC: %f ", i, cellNum, channelNo, v, temp);
+//     Serial.println(buffer);
+// #endif
+//   }
+//   CAN_1.write(energus_voltages);
+// }
 
-#ifdef runningFoReal
-void getAllTheTemps(int channelNo)
-{
-  for (int i = 0; i < NUMBER_OF_LTCs; i++)
-  {
-    theThings[i].changeChannel(CHAN_SINGLE_0P);
-  }
-  conversionTime = 0;
-  delay(100);
-  for (int i = 0; i < NUMBER_OF_LTCs; i++)
-  {
-    float voltageX = theThings[i].readVoltage();
-    Serial.println(voltageX);
-    int readingNumber = (i * 12) + channelNo;
-    batteryTempvoltages[readingNumber] = voltageX;
-#ifdef DEBUG
-    char buffer[50];
-    sprintf(buffer, "LTC Number: %d  Channel: %d Voltage: %f Reading Number: %d", i, channelNo, voltageX, readingNumber);
-    Serial.println(buffer);
-#endif
-  }
-  // Serial.println("=================");
-}
-#endif
+// #ifdef runningFoReal
+// void getAllTheTemps(int channelNo)
+// {
+//   for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//   {
+//     theThings[i].changeChannel(CHAN_SINGLE_0P);
+//   }
+//   conversionTime = 0;
+//   delay(100);
+//   for (int i = 0; i < NUMBER_OF_LTCs; i++)
+//   {
+//     float voltageX = theThings[i].readVoltage();
+//     Serial.println(voltageX);
+//     int readingNumber = (i * 12) + channelNo;
+//     batteryTempvoltages[readingNumber] = voltageX;
+// #ifdef DEBUG
+//     char buffer[50];
+//     sprintf(buffer, "LTC Number: %d  Channel: %d Voltage: %f Reading Number: %d", i, channelNo, voltageX, readingNumber);
+//     Serial.println(buffer);
+// #endif
+//   }
+//   // Serial.println("=================");
+// }
+// #endif
 
 
-void ACUStateMachine()
-{
-  // Serial.println("State:");
-  // Serial.println(acuState);
-  switch (acuState)
-  {
-  case 0:
-  {
-    setChannelsSwitchCase(currentChannel);
-    conversionTime = 0;
-    acuState = 1;
-    Serial.println("Setting Channels: ");
-    break;
-  }
-  case 1:
-  {
-    if (conversionTime >= 100)
-    {
-      acuState = 2;
-      Serial.println("Going to get readings");
-    }
-    break;
-  }
-  case 2:
-  {
-    Serial.println("reading channels");
-    getTemps(currentChannel);
-    acuState = 0;
-    currentChannel++;
-    if (currentChannel > 11)
-    {
-      currentChannel = 0;
-    }
-    break;
-  }
-  }
-}
+// // void ACUStateMachine()
+// {
+//   // Serial.println("State:");
+//   // Serial.println(acuState);
+//   switch (acuState)
+//   {
+//   case 0:
+//   {
+//     setChannelsSwitchCase(currentChannel);
+//     conversionTime = 0;
+//     acuState = 1;
+//     Serial.println("Setting Channels: ");
+//     break;
+//   }
+//   case 1:
+//   {
+//     if (conversionTime >= 100)
+//     {
+//       acuState = 2;
+//       Serial.println("Going to get readings");
+//     }
+//     break;
+//   }
+//   case 2:
+//   {
+//     Serial.println("reading channels");
+//     getTemps(currentChannel);
+//     acuState = 0;
+//     currentChannel++;
+//     if (currentChannel > 11)
+//     {
+//       currentChannel = 0;
+//     }
+//     break;
+//   }
+//   }
+// }
 
 void DebuggingPrintout()
 {
