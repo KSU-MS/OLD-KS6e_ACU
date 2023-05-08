@@ -1,4 +1,4 @@
-# KS6e_ACU
+# OLD KS6e_ACU firmware, no longer used and was the new code that Matthew had started to write
 KS6e ACU firmware
 Testing branch
 
